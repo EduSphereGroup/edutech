@@ -164,12 +164,6 @@ npm install
 npm run dev
 ```
 
-**Backend:**
-```bash
-cd server
-node index.js
-```
-
 A aplicação estará disponível em `http://localhost:5173`
 
 ## 📁 Estrutura do Projeto
