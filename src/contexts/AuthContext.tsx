@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        // Aqui você pode buscar dados extras do Firestore
+        
         setProfile({
           id: firebaseUser.uid,
           username: firebaseUser.email || "",

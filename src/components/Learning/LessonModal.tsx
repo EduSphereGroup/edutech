@@ -1,14 +1,29 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle, Star, ArrowRight, ArrowLeft, BookOpen } from 'lucide-react';
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  X,
+  CheckCircle,
+  Star,
+  ArrowRight,
+  ArrowLeft,
+  BookOpen,
+} from "lucide-react";
+import { api } from "../../hooks/useAPI";
+import { toast } from "sonner";
 
 interface LessonModalProps {
   lesson: any;
+  moduleId: string;
   onClose: () => void;
-  onComplete: (lessonId: number) => void;
+  onCompleteLocal: (lessonId: string) => void;
 }
 
-const LessonModal: React.FC<LessonModalProps> = ({ lesson, onClose, onComplete }) => {
+const LessonModal: React.FC<LessonModalProps> = ({
+  lesson,
+  moduleId,
+  onClose,
+  onCompleteLocal,
+}) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [showComplete, setShowComplete] = useState(false);
 
@@ -16,13 +31,14 @@ const LessonModal: React.FC<LessonModalProps> = ({ lesson, onClose, onComplete }
     {
       title: "Aprender",
       content: lesson.content,
-      icon: <BookOpen className="h-6 w-6" />
+      icon: <BookOpen className="h-6 w-6" />,
     },
     {
       title: "Praticar",
-      content: "Ótimo trabalho lendo a aula! Agora vamos colocar seu conhecimento em prática. Em um ambiente de sala de aula real, você aplicaria esses conceitos com seus alunos. Clique em 'Concluir Aula' para marcar esta aula como finalizada e ganhar seus XP!",
-      icon: <Star className="h-6 w-6" />
-    }
+      content:
+        "Ótimo trabalho lendo a aula! Agora vamos colocar seu conhecimento em prática. Clique em 'Concluir Aula' para finalizar e ganhar seus XP!",
+      icon: <Star className="h-6 w-6" />,
+    },
   ];
 
   const handleNext = () => {
@@ -37,11 +53,24 @@ const LessonModal: React.FC<LessonModalProps> = ({ lesson, onClose, onComplete }
     setCurrentStep(Math.max(0, currentStep - 1));
   };
 
-  const handleComplete = () => {
-    onComplete(lesson.id);
-    setTimeout(() => {
+  const handleComplete = async () => {
+    try {
+      await api.post("/user/progress/complete", {
+        moduleId,
+        lessonId: lesson.id,
+      });
+
+      onCompleteLocal(lesson.id);
+
+      toast.success(`Aula concluída! Você ganhou ${lesson.xpReward} XP`, {
+        duration: 3000,
+      });
+
       onClose();
-    }, 2000);
+    } catch (error) {
+      console.error("Erro ao concluir aula:", error);
+      toast.error("Erro ao concluir a aula. Tente novamente.");
+    }
   };
 
   return (
@@ -61,7 +90,6 @@ const LessonModal: React.FC<LessonModalProps> = ({ lesson, onClose, onComplete }
         >
           {!showComplete ? (
             <>
-              {/* Header */}
               <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
@@ -69,7 +97,9 @@ const LessonModal: React.FC<LessonModalProps> = ({ lesson, onClose, onComplete }
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-2">
                         {steps[currentStep].icon}
-                        <span className="text-lg font-medium">{steps[currentStep].title}</span>
+                        <span className="text-lg font-medium">
+                          {steps[currentStep].title}
+                        </span>
                       </div>
                       <div className="text-sm opacity-90">
                         Etapa {currentStep + 1} de {steps.length}
@@ -84,22 +114,20 @@ const LessonModal: React.FC<LessonModalProps> = ({ lesson, onClose, onComplete }
                   </button>
                 </div>
 
-                {/* Progress Bar */}
-                <div className="mt-4">
-                  <div className="flex space-x-2">
-                    {steps.map((_, index) => (
-                      <div
-                        key={index}
-                        className={`h-2 flex-1 rounded-full transition-all duration-300 ${
-                          index <= currentStep ? 'bg-white' : 'bg-white bg-opacity-30'
-                        }`}
-                      />
-                    ))}
-                  </div>
+                <div className="mt-4 flex space-x-2">
+                  {steps.map((_, index) => (
+                    <div
+                      key={index}
+                      className={`h-2 flex-1 rounded-full transition-all duration-300 ${
+                        index <= currentStep
+                          ? "bg-white"
+                          : "bg-white bg-opacity-30"
+                      }`}
+                    />
+                  ))}
                 </div>
               </div>
 
-              {/* Content */}
               <div className="p-8 overflow-y-auto max-h-[50vh]">
                 <motion.div
                   key={currentStep}
@@ -115,7 +143,6 @@ const LessonModal: React.FC<LessonModalProps> = ({ lesson, onClose, onComplete }
                 </motion.div>
               </div>
 
-              {/* Footer */}
               <div className="bg-gray-50 px-8 py-6 flex justify-between items-center">
                 <button
                   onClick={handlePrevious}
@@ -137,7 +164,9 @@ const LessonModal: React.FC<LessonModalProps> = ({ lesson, onClose, onComplete }
                   onClick={handleNext}
                   className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md"
                 >
-                  {currentStep === steps.length - 1 ? 'Concluir Aula' : 'Próximo'}
+                  {currentStep === steps.length - 1
+                    ? "Concluir Aula"
+                    : "Próximo"}
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </motion.button>
               </div>
@@ -151,12 +180,17 @@ const LessonModal: React.FC<LessonModalProps> = ({ lesson, onClose, onComplete }
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 200,
+                  damping: 15,
+                  delay: 0.2,
+                }}
                 className="w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg"
               >
                 <CheckCircle className="h-10 w-10 text-green-600" />
               </motion.div>
-              
+
               <motion.h3
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -165,33 +199,18 @@ const LessonModal: React.FC<LessonModalProps> = ({ lesson, onClose, onComplete }
               >
                 Aula Concluída!
               </motion.h3>
-              
+
               <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
                 className="text-gray-600 mb-6 text-lg"
               >
-                Parabéns! Você ganhou <span className="font-bold text-blue-600">{lesson.xpReward} XP</span>
+                Parabéns! Você ganhou{" "}
+                <span className="font-bold text-blue-600">
+                  {lesson.xpReward} XP
+                </span>
               </motion.p>
-              
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                className="flex items-center justify-center space-x-1 mb-8"
-              >
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ delay: 0.8 + i * 0.1, type: "spring", stiffness: 200 }}
-                  >
-                    <Star className="h-8 w-8 text-yellow-400 fill-current" />
-                  </motion.div>
-                ))}
-              </motion.div>
 
               <motion.button
                 initial={{ opacity: 0, y: 20 }}

@@ -1,50 +1,70 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, CheckCircle, Clock, BookOpen, Lightbulb, ExternalLink } from 'lucide-react';
-import { useUserProgress } from '../../hooks/useGameData';
-import { useAuth } from '../../contexts/AuthContext';
-import { getPersonalizedModules } from '../../data/personalizedContent';
-import { personalizationService } from '../../services/personalizationService';
-import PersonalizedLessonModal from './PersonalizedLessonModal';
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  ArrowLeft,
+  Play,
+  CheckCircle,
+  Clock,
+  BookOpen,
+  Lightbulb,
+  ExternalLink,
+} from "lucide-react";
+import { useUserProgress } from "../../hooks/useGameData";
+import { useAuth } from "../../contexts/AuthContext";
+import { personalizationService } from "../../services/personalizationService";
+import { useModuleById } from "../../hooks/useModuleById";
+import PersonalizedLessonModal from "./PersonalizedLessonModal";
 
 const PersonalizedModuleView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { progress, completeLesson } = useUserProgress();
-  
+
   const [selectedLesson, setSelectedLesson] = useState<any>(null);
-  const [module, setModule] = useState<any>(null);
 
-  useEffect(() => {
-    if (user && id) {
-      const preferences = personalizationService.getUserPreferences(user.id);
-      if (preferences) {
-        const modules = getPersonalizedModules(preferences.grade, preferences.subject);
-        const foundModule = modules.find(m => m.id === parseInt(id));
-        setModule(foundModule);
-      }
-    }
-  }, [user, id]);
+  const preferences = personalizationService.getUserPreferences(
+    user?.uid || ""
+  );
 
-  const isLessonCompleted = (lessonId: number) => {
+  const { module, loading, error } = useModuleById(id || "", {
+    grade: preferences?.grade || "",
+    subject: preferences?.subject || "",
+    difficulty: preferences?.difficulty || "",
+  });
+
+  const isLessonCompleted = (lessonId: string) => {
     return progress.some((p: any) => p.lessonId === lessonId && p.completed);
   };
 
   const handleLessonComplete = async (lessonId: number) => {
     if (!module || !user) return;
-    
-    completeLesson(module.id, lessonId);
+
+    await completeLesson(module.id, lessonId.toString());
   };
 
-  if (!module) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full"
+        />
+      </div>
+    );
+  }
+
+  if (!module || error) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Módulo não encontrado</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Módulo não encontrado
+          </h1>
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate("/dashboard")}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Voltar ao Dashboard
@@ -54,8 +74,14 @@ const PersonalizedModuleView: React.FC = () => {
     );
   }
 
-  const completedLessons = module.lessons.filter((lesson: any) => isLessonCompleted(lesson.id)).length;
-  const progressPercentage = module.lessons.length > 0 ? (completedLessons / module.lessons.length) * 100 : 0;
+  const completedLessons = module.lessons.filter((lesson: any) =>
+    isLessonCompleted(lesson.id.toString())
+  ).length;
+
+  const progressPercentage =
+    module.lessons.length > 0
+      ? (completedLessons / module.lessons.length) * 100
+      : 0;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -65,7 +91,7 @@ const PersonalizedModuleView: React.FC = () => {
         transition={{ duration: 0.5 }}
       >
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate("/dashboard")}
           className="flex items-center text-blue-600 hover:text-blue-700 mb-6 transition-colors"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -81,36 +107,50 @@ const PersonalizedModuleView: React.FC = () => {
                   Conteúdo Personalizado
                 </span>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-3">{module.title}</h1>
-              <p className="text-gray-600 text-lg leading-relaxed">{module.description}</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-3">
+                {module.title}
+              </h1>
+              <p className="text-gray-600 text-lg leading-relaxed">
+                {module.description}
+              </p>
             </div>
             <div className="ml-6 p-4 bg-purple-100 rounded-full">
               <BookOpen className="h-8 w-8 text-purple-600" />
             </div>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div className="text-center p-4 bg-white rounded-lg shadow-sm">
               <Clock className="h-6 w-6 text-blue-600 mx-auto mb-2" />
               <p className="text-sm text-gray-500">XP Disponível</p>
-              <p className="text-xl font-bold text-gray-900">{module.xpReward}</p>
+              <p className="text-xl font-bold text-gray-900">
+                {module.xpReward}
+              </p>
             </div>
             <div className="text-center p-4 bg-white rounded-lg shadow-sm">
               <BookOpen className="h-6 w-6 text-green-600 mx-auto mb-2" />
               <p className="text-sm text-gray-500">Total de Aulas</p>
-              <p className="text-xl font-bold text-gray-900">{module.lessons.length}</p>
+              <p className="text-xl font-bold text-gray-900">
+                {module.lessons.length}
+              </p>
             </div>
             <div className="text-center p-4 bg-white rounded-lg shadow-sm">
               <CheckCircle className="h-6 w-6 text-purple-600 mx-auto mb-2" />
               <p className="text-sm text-gray-500">Concluídas</p>
-              <p className="text-xl font-bold text-gray-900">{completedLessons}</p>
+              <p className="text-xl font-bold text-gray-900">
+                {completedLessons}
+              </p>
             </div>
           </div>
 
           <div className="mb-4">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-700">Progresso</span>
-              <span className="text-sm text-gray-500">{Math.round(progressPercentage)}%</span>
+              <span className="text-sm font-medium text-gray-700">
+                Progresso
+              </span>
+              <span className="text-sm text-gray-500">
+                {Math.round(progressPercentage)}%
+              </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
               <motion.div
@@ -124,7 +164,9 @@ const PersonalizedModuleView: React.FC = () => {
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Aulas do Módulo</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">
+            Aulas do Módulo
+          </h2>
           {module.lessons.map((lesson: any, index: number) => (
             <motion.div
               key={lesson.id}
@@ -139,7 +181,7 @@ const PersonalizedModuleView: React.FC = () => {
                     <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full mr-3">
                       Aula {lesson.orderIndex}
                     </span>
-                    {isLessonCompleted(lesson.id) && (
+                    {isLessonCompleted(lesson.id.toString()) && (
                       <CheckCircle className="h-5 w-5 text-green-600" />
                     )}
                   </div>
@@ -149,14 +191,18 @@ const PersonalizedModuleView: React.FC = () => {
                   <p className="text-sm text-gray-600 mb-3 line-clamp-2">
                     {lesson.content.substring(0, 150)}...
                   </p>
-                  
+
                   {lesson.practicalActivity && (
                     <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                       <div className="flex items-center mb-1">
                         <Lightbulb className="h-4 w-4 text-blue-600 mr-1" />
-                        <span className="text-xs font-medium text-blue-800">Atividade Prática</span>
+                        <span className="text-xs font-medium text-blue-800">
+                          Atividade Prática
+                        </span>
                       </div>
-                      <p className="text-sm text-blue-700">{lesson.practicalActivity}</p>
+                      <p className="text-sm text-blue-700">
+                        {lesson.practicalActivity}
+                      </p>
                     </div>
                   )}
 
@@ -164,17 +210,21 @@ const PersonalizedModuleView: React.FC = () => {
                     <div className="mb-3">
                       <div className="flex items-center mb-2">
                         <ExternalLink className="h-4 w-4 text-gray-500 mr-1" />
-                        <span className="text-xs font-medium text-gray-700">Recursos Recomendados</span>
+                        <span className="text-xs font-medium text-gray-700">
+                          Recursos Recomendados
+                        </span>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {lesson.resources.map((resource: string, idx: number) => (
-                          <span
-                            key={idx}
-                            className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full"
-                          >
-                            {resource}
-                          </span>
-                        ))}
+                        {lesson.resources.map(
+                          (resource: string, idx: number) => (
+                            <span
+                              key={idx}
+                              className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full"
+                            >
+                              {resource}
+                            </span>
+                          )
+                        )}
                       </div>
                     </div>
                   )}
@@ -184,9 +234,9 @@ const PersonalizedModuleView: React.FC = () => {
                     <span>{lesson.xpReward} XP</span>
                   </div>
                 </div>
-                
+
                 <div className="ml-6">
-                  {isLessonCompleted(lesson.id) ? (
+                  {isLessonCompleted(lesson.id.toString()) ? (
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}

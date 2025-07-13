@@ -1,55 +1,80 @@
-import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { useAuth } from '../../contexts/AuthContext';
-import { useUserProgress, useUserBadges } from '../../hooks/useGameData';
-import { personalizationService } from '../../services/personalizationService';
-import { getPersonalizedModules, gradeNames, subjectNames, difficultyNames } from '../../data/personalizedContent';
-import PersonalizationModal from '../Onboarding/PersonalizationModal';
-import StatsCard from './StatsCard';
-import ProgressCard from './ProgressCard';
-import PersonalizedModuleCard from './PersonalizedModuleCard';
-import RankingCard from './RankingCard';
-import { Settings, RefreshCw } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { useAuth } from "../../contexts/AuthContext";
+import { personalizationService } from "../../services/personalizationService";
+import {
+  gradeNames,
+  subjectNames,
+  difficultyNames,
+} from "../../data/personalizedContent";
+import PersonalizationModal from "../Onboarding/PersonalizationModal";
+import StatsCard from "./StatsCard";
+import ProgressCard from "./ProgressCard";
+import PersonalizedModuleCard from "./PersonalizedModuleCard";
+import RankingCard from "./RankingCard";
+import { Settings, RefreshCw } from "lucide-react";
+import { useUserStats } from "../../hooks/useUserStats";
+import { usePersonalizedModules } from "../../hooks/usePersonalizedModules";
+import { useBadgesAPI } from "../../hooks/useBadgesAPI";
+import { useProgressAPI } from "../../hooks/useProgressAPI";
 
 const PersonalizedDashboard: React.FC = () => {
-  const { user, updateUser } = useAuth();
-  const { progress, loading: progressLoading } = useUserProgress();
-  const { badges, loading: badgesLoading } = useUserBadges();
+  const { user, updateUser, profile } = useAuth();
+
+  const { stats, loading: statsLoading } = useUserStats();
+  const { badges, loading: badgesLoading } = useBadgesAPI();
+  const { progress, loading: progressLoading } = useProgressAPI();
+
   const [showPersonalization, setShowPersonalization] = useState(false);
   const [userPreferences, setUserPreferences] = useState<any>(null);
-  const [personalizedModules, setPersonalizedModules] = useState<any[]>([]);
+
+  const { modules: personalizedModules, loading: modulesLoading } =
+    usePersonalizedModules({
+      grade: userPreferences?.grade || "",
+      subject: userPreferences?.subject || "",
+      difficulty: userPreferences?.difficulty || "",
+    });
 
   useEffect(() => {
     if (user) {
-      const preferences = personalizationService.getUserPreferences(user.id);
+      const preferences = personalizationService.getUserPreferences(
+        profile?.id ?? ""
+      );
       setUserPreferences(preferences);
-      
+
       if (!preferences?.completedOnboarding) {
         setShowPersonalization(true);
-      } else {
-        const modules = getPersonalizedModules(preferences.grade, preferences.subject);
-        setPersonalizedModules(modules);
       }
     }
   }, [user]);
 
-  // Listen for user updates from localStorage
   useEffect(() => {
     const handleUserUpdate = (event: any) => {
       updateUser(event.detail);
     };
 
-    window.addEventListener('userUpdated', handleUserUpdate);
-    return () => window.removeEventListener('userUpdated', handleUserUpdate);
+    window.addEventListener("userUpdated", handleUserUpdate);
+    return () => window.removeEventListener("userUpdated", handleUserUpdate);
   }, [updateUser]);
 
-  const handlePersonalizationComplete = (data: { grade: string; subject: string; difficulty: string }) => {
+  const handlePersonalizationComplete = (data: {
+    grade: string;
+    subject: string;
+    difficulty: string;
+  }) => {
     if (!user) return;
-    
-    personalizationService.completeOnboarding(user.id, data.grade, data.subject, data.difficulty);
-    const modules = getPersonalizedModules(data.grade, data.subject);
-    setPersonalizedModules(modules);
-    setUserPreferences({ ...data, userId: user.id, completedOnboarding: true });
+
+    personalizationService.completeOnboarding(
+      profile?.id ?? "",
+      data.grade,
+      data.subject,
+      data.difficulty
+    );
+    setUserPreferences({
+      ...data,
+      userId: profile?.id ?? "",
+      completedOnboarding: true,
+    });
     setShowPersonalization(false);
   };
 
@@ -57,7 +82,7 @@ const PersonalizedDashboard: React.FC = () => {
     setShowPersonalization(true);
   };
 
-  if (progressLoading || badgesLoading) {
+  if (progressLoading || badgesLoading || statsLoading || modulesLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <motion.div
@@ -69,10 +94,16 @@ const PersonalizedDashboard: React.FC = () => {
     );
   }
 
-  const completedLessons = progress.filter((p: any) => p.completed && p.lessonId).length;
-  const totalLessons = personalizedModules.reduce((total, module) => total + module.lessons.length, 0);
-  const completedModules = progress.filter((p: any) => p.completed && p.moduleId && !p.lessonId).length;
-  const earnedBadges = badges.filter((b: any) => b.earned).length;
+  const completedLessons = progress.filter(
+    (p: any) => p.completed && p.lessonId
+  ).length;
+  const totalLessons = personalizedModules.reduce(
+    (total, module) => total + module.lessons.length,
+    0
+  );
+  const completedModules = progress.filter(
+    (p: any) => p.completed && p.moduleId && !p.lessonId
+  ).length;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -85,7 +116,7 @@ const PersonalizedDashboard: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Bem-vindo, {user?.username || "Professor"}! Hoje será um dia incrível!
+              Bem-vindo, Professor! Hoje será um dia incrível!
             </h2>
             {userPreferences && (
               <div className="flex items-center space-x-4 text-gray-600">
@@ -104,7 +135,7 @@ const PersonalizedDashboard: React.FC = () => {
               Conteúdo personalizado para sua área de atuação
             </p>
           </div>
-          
+
           {userPreferences && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -119,39 +150,37 @@ const PersonalizedDashboard: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatsCard
           title="XP Conquistado"
-          value={user?.xp || 0}
+          value={stats?.xp || 0}
           icon="star"
           color="blue"
           delay={0.1}
         />
         <StatsCard
           title="Nível Atual"
-          value={user?.level || 1}
+          value={stats?.level || 1}
           icon="trophy"
           color="green"
           delay={0.2}
         />
         <StatsCard
           title="Aulas Concluídas"
-          value={completedLessons}
+          value={stats?.completedLessons || 0}
           icon="check"
           color="purple"
           delay={0.3}
         />
         <StatsCard
           title="Conquistas"
-          value={earnedBadges}
+          value={stats?.earnedBadges || 0}
           icon="award"
           color="yellow"
           delay={0.4}
         />
       </div>
 
-      {/* Progress and Ranking */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <ProgressCard
           completedLessons={completedLessons}
@@ -163,14 +192,15 @@ const PersonalizedDashboard: React.FC = () => {
         <RankingCard userPreferences={userPreferences} />
       </div>
 
-      {/* Personalized Learning Modules */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Seus Módulos Personalizados</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Seus Módulos Personalizados
+          </h2>
           {personalizedModules.length === 0 && userPreferences && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -183,7 +213,7 @@ const PersonalizedDashboard: React.FC = () => {
             </motion.button>
           )}
         </div>
-        
+
         {personalizedModules.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {personalizedModules.map((module: any, index: number) => (
@@ -208,7 +238,9 @@ const PersonalizedDashboard: React.FC = () => {
               Conteúdo em Desenvolvimento
             </h3>
             <p className="text-gray-600 mb-4">
-              Estamos preparando conteúdo específico para {gradeNames[userPreferences.grade]} - {subjectNames[userPreferences.subject]}
+              Estamos preparando conteúdo específico para{" "}
+              {gradeNames[userPreferences.grade]} -{" "}
+              {subjectNames[userPreferences.subject]}
             </p>
             <button
               onClick={handleReconfigure}

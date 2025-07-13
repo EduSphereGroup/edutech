@@ -11,6 +11,7 @@ api.interceptors.request.use(async (config) => {
   if (user) {
     const token = await user.getIdToken();
     config.headers.Authorization = `Bearer ${token}`;
+    console.log("Token de autenticação adicionado:", token);
   }
   return config;
 });

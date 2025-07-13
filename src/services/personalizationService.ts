@@ -1,7 +1,7 @@
 import { storageService } from './localStorage';
 
 export interface UserPreferences {
-  userId: number;
+  userId: string;
   grade: string;
   subject: string;
   difficulty: string;
@@ -24,7 +24,7 @@ export const personalizationService = {
     localStorage.setItem(PREFERENCES_KEY, JSON.stringify(allPreferences));
   },
 
-  getUserPreferences: (userId: number): UserPreferences | null => {
+  getUserPreferences: (userId: string): UserPreferences | null => {
     const allPreferences = personalizationService.getAllPreferences();
     return allPreferences.find(p => p.userId === userId) || null;
   },
@@ -34,12 +34,12 @@ export const personalizationService = {
     return data ? JSON.parse(data) : [];
   },
 
-  hasCompletedOnboarding: (userId: number): boolean => {
+  hasCompletedOnboarding: (userId: string): boolean => {
     const preferences = personalizationService.getUserPreferences(userId);
     return preferences?.completedOnboarding || false;
   },
 
-  completeOnboarding: (userId: number, grade: string, subject: string, difficulty: string): void => {
+  completeOnboarding: (userId: string, grade: string, subject: string, difficulty: string): void => {
     personalizationService.savePreferences({
       userId,
       grade,
