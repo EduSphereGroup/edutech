@@ -76,14 +76,6 @@ src/
 └── data/              # Dados mockados e tipos
 ```
 
-### Backend (Express + SQLite)
-```
-server/
-├── index.js           # Servidor Express principal
-├── database.sqlite    # Banco de dados SQLite
-└── (migrations)       # Scripts de inicialização do DB
-```
-
 ### Padrões Arquiteturais
 - **Component-Based Architecture**: Componentes reutilizáveis e modulares
 - **Context API**: Gerenciamento de estado global para autenticação
