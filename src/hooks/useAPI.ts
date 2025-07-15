@@ -1,4 +1,3 @@
-// src/hooks/useAPI.ts
 import axios from "axios";
 import { getAuth } from "firebase/auth";
 

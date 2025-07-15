@@ -6,19 +6,24 @@ interface UsePersonalizedModulesOptions {
   grade: string;
   subject: string;
   difficulty: string;
+  enabled?: boolean; // NOVO
 }
 
 export const usePersonalizedModules = ({
   grade,
   subject,
-  difficulty
+  difficulty,
+  enabled = true, // NOVO
 }: UsePersonalizedModulesOptions) => {
   const [modules, setModules] = useState<PersonalizedModule[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!grade || !subject || !difficulty) return;
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
 
     const fetchModules = async () => {
       setLoading(true);
@@ -37,7 +42,7 @@ export const usePersonalizedModules = ({
     };
 
     fetchModules();
-  }, [grade, subject, difficulty]);
+  }, [grade, subject, difficulty, enabled]);
 
   return { modules, loading, error };
 };

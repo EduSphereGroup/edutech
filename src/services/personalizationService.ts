@@ -1,4 +1,4 @@
-import { storageService } from './localStorage';
+import { storageService } from "./localStorage";
 
 export interface UserPreferences {
   userId: string;
@@ -8,25 +8,27 @@ export interface UserPreferences {
   completedOnboarding: boolean;
 }
 
-const PREFERENCES_KEY = 'teachtech_preferences';
+const PREFERENCES_KEY = "teachtech_preferences";
 
 export const personalizationService = {
   savePreferences: (preferences: UserPreferences): void => {
     const allPreferences = personalizationService.getAllPreferences();
-    const existingIndex = allPreferences.findIndex(p => p.userId === preferences.userId);
-    
+    const existingIndex = allPreferences.findIndex(
+      (p) => p.userId === preferences.userId
+    );
+
     if (existingIndex >= 0) {
       allPreferences[existingIndex] = preferences;
     } else {
       allPreferences.push(preferences);
     }
-    
+
     localStorage.setItem(PREFERENCES_KEY, JSON.stringify(allPreferences));
   },
 
   getUserPreferences: (userId: string): UserPreferences | null => {
     const allPreferences = personalizationService.getAllPreferences();
-    return allPreferences.find(p => p.userId === userId) || null;
+    return allPreferences.find((p) => p.userId === userId) || null;
   },
 
   getAllPreferences: (): UserPreferences[] => {
@@ -39,13 +41,22 @@ export const personalizationService = {
     return preferences?.completedOnboarding || false;
   },
 
-  completeOnboarding: (userId: string, grade: string, subject: string, difficulty: string): void => {
+  completeOnboarding: (
+    userId: string,
+    grade: string,
+    subject: string,
+    difficulty: string
+  ): void => {
     personalizationService.savePreferences({
       userId,
       grade,
       subject,
       difficulty,
-      completedOnboarding: true
+      completedOnboarding: true,
     });
-  }
+  },
+
+  clearUserPreferences(userId: string) {
+    localStorage.removeItem(`preferences_${userId}`);
+  },
 };

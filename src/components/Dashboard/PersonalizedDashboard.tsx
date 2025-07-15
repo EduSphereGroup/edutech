@@ -17,6 +17,7 @@ import { useUserStats } from "../../hooks/useUserStats";
 import { usePersonalizedModules } from "../../hooks/usePersonalizedModules";
 import { useBadgesAPI } from "../../hooks/useBadgesAPI";
 import { useProgressAPI } from "../../hooks/useProgressAPI";
+import { api } from "../../hooks/useAPI";
 
 const PersonalizedDashboard: React.FC = () => {
   const { user, updateUser, profile } = useAuth();
@@ -36,17 +37,17 @@ const PersonalizedDashboard: React.FC = () => {
     });
 
   useEffect(() => {
-    if (user) {
-      const preferences = personalizationService.getUserPreferences(
-        profile?.id ?? ""
-      );
-      setUserPreferences(preferences);
+    if (user && profile) {
+      const preferences = personalizationService.getUserPreferences(profile.id);
 
-      if (!preferences?.completedOnboarding) {
+      if (!preferences || !preferences.completedOnboarding) {
+        console.log("[Dashboard] Nenhuma preferência encontrada ou onboarding não completo. Abrindo PersonalizationModal");
         setShowPersonalization(true);
       }
+
+      setUserPreferences(preferences);
     }
-  }, [user]);
+  }, [user, profile]);
 
   useEffect(() => {
     const handleUserUpdate = (event: any) => {
@@ -57,28 +58,36 @@ const PersonalizedDashboard: React.FC = () => {
     return () => window.removeEventListener("userUpdated", handleUserUpdate);
   }, [updateUser]);
 
-  const handlePersonalizationComplete = (data: {
+  const handlePersonalizationComplete = async (data: {
     grade: string;
     subject: string;
     difficulty: string;
   }) => {
-    if (!user) return;
+    if (!user || !profile) return;
 
+    // Salva no backend
+    await api.post("/user/preferences", data);
+
+    // Salva localmente
     personalizationService.completeOnboarding(
-      profile?.id ?? "",
+      profile.id,
       data.grade,
       data.subject,
       data.difficulty
     );
+
     setUserPreferences({
       ...data,
-      userId: profile?.id ?? "",
       completedOnboarding: true,
     });
     setShowPersonalization(false);
   };
 
   const handleReconfigure = () => {
+    if (profile?.id) {
+      personalizationService.clearUserPreferences(profile.id);
+    }
+    setUserPreferences(null);
     setShowPersonalization(true);
   };
 
@@ -238,9 +247,7 @@ const PersonalizedDashboard: React.FC = () => {
               Conteúdo em Desenvolvimento
             </h3>
             <p className="text-gray-600 mb-4">
-              Estamos preparando conteúdo específico para{" "}
-              {gradeNames[userPreferences.grade]} -{" "}
-              {subjectNames[userPreferences.subject]}
+              Estamos preparando conteúdo específico para {gradeNames[userPreferences.grade]} - {subjectNames[userPreferences.subject]}
             </p>
             <button
               onClick={handleReconfigure}
@@ -254,11 +261,7 @@ const PersonalizedDashboard: React.FC = () => {
 
       <PersonalizationModal
         isOpen={showPersonalization}
-        onClose={() => {
-          if (userPreferences?.completedOnboarding) {
-            setShowPersonalization(false);
-          }
-        }}
+        onClose={() => setShowPersonalization(false)}
         onComplete={handlePersonalizationComplete}
       />
     </div>
